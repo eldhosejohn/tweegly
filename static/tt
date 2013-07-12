@@ -1,0 +1,112 @@
+(function ($) {
+
+        
+    var tweets =[];
+
+    var Tweet = Backbone.Model.extend({
+        defaults:{
+            text:"",
+            username:"",
+            time:"",
+        }
+    });
+    
+    var TweetView = Backbone.View.extend({
+        tagName:"div",
+        className:"tweetContainer",
+        template:$("#tweetTemplate").html(),
+        
+        render:function(){
+            var tmpl = _.template(this.template);
+            this.$el.html(tmpl(this.model.toJSON()));
+            return this;
+            }
+        });
+    
+    var Library = Backbone.Collection.extend({
+        model:Tweet
+        });
+    
+    var LibraryView = Backbone.View.extend({
+        el:$("#results"),
+        
+        initialize:function(){
+                        
+           _.bindAll(this);
+            this.collection = new Library(tweets);
+            console.log(tweets.length);
+            
+            this.collection.bind('add', this.render);
+            this.render();
+        },
+        
+        render:function(){
+            var that = this;
+            console.log(this.collection.models.length);
+
+            _.each(this.collection.models, function(item){
+                that.renderTweet(item);
+            }, this);
+        },
+        
+        events:{
+            "click #fetch":"fetchTweets",
+        },
+        
+        fetchTweets:function(e){
+            
+            e.preventDefault();
+            var that = this;
+            var screenName = $("#screenname").val();
+            tweets=[];
+            
+            jQuery.get("/tweets", function(data, textStatus, jqXHR){
+                
+                json = eval(data);
+                that.tweets = [];
+
+                $.each(json, function(i, val)
+                       {                       
+                        tweet= { text:val["text"],user:val["tweeted_by"],time:""};
+                        tweets.push(tweet);
+                        
+                       });
+                    that.initialize();
+             });
+
+        },
+        
+        searchUserTweets:function(e){
+                        $(".tweetContainer").remove();
+            e.preventDefault();
+            var that = this;
+            var screenName = $("#screenname").val();
+            var searchQuery = $("#searchQuery").val();
+            tweets=[];
+            
+            jQuery.get("/search/?screen_name=" + screenName + "&q=" + searchQuery, function(data, textStatus, jqXHR){
+                json = eval(data);
+                that.tweets=[]
+                
+                $.each(json, function(i,val)
+                       {
+                        tweet = {text:val["text"], user:val["screen_name"],time:""};
+                        tweets.push(tweet);
+                       });
+                that.initialize();
+            });
+        },
+        
+        renderTweet:function(item){
+            var tweetView = new TweetView({
+                model:item
+            });
+            this.$el.append(tweetView.render().el);
+        }
+        
+        });
+    
+    var libraryView = new LibraryView();
+    
+
+})(jQuery);
